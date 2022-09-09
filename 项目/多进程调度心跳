@@ -1,0 +1,35 @@
+# 1 守护进程调度程序
+```cpp
+int main(int argc,char* argv[])
+{
+    // 关闭信号和IO
+    for(int i=0;i<64;i++)
+    {   
+        signal(i,SIG_IGN); //close(i);
+    }
+    // 生成子进程，父进程退出
+    if(fork()>0) exit(0);
+    signal(SIGCHLD,SIG_IGN);
+    // 去除调度程序的参数
+    char* pargv[argc];
+    for(int i=0;i<argc;i++)
+    {
+        pargv[i] = argv[i+2];
+    }
+    pargv[argc-2] = NULL;
+    while(true)
+    {
+        if(fork()==0)
+        {
+            execv(argv[2],pargv);
+            exit(0);
+        }
+        else
+        {
+            int status = 0;
+            wait(&status);
+            sleep(atoi(argv[1]));
+        }
+    }
+}
+```
