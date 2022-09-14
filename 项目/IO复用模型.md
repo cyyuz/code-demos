@@ -7,7 +7,28 @@
 tcp发送缓冲区2.5M，接收缓冲区1M。
 在高并发和流媒体传输场景中，缓冲区有填满的可能。
 
-## select
+- 事件：
+
+> 可读：1)新客户端的连接请求accept；2)客户端有报文到达recv，可以读；3)客户端连接已断开；
+> 
+> 可写：4)可以向客户端发送报文send，可以写。
+
+- 水平触发
+
+> 如果事件和数据已经在缓冲区里，程序调用select()时会报告事件，数据也不会丢失；
+> 如果select()已经报告了事件，但是程序没有处理它，下次调用select()的时候会重新报告。
+
+
+# select
+- 缺点
+
+> 支持连接数太小(1024)，调整的意义不大，因为连接越多性能越差。
+> 
+> select()是内核函数，每次调用都要把fdset从用户态拷贝到内核态，调用select()之后，把fdset从内核态拷贝到用户态。
+> 
+> select()返回后，需要遍历bitmap，效率比较低。虽然bitmap比较小，但拷贝次数多。
+
+
 ```cpp
 // 初始化服务端的监听端口。
 int initserver(int port);
@@ -29,14 +50,10 @@ int main(int argc,char *argv[])
 
   while (true)
   {
-    // 事件：1)新客户端的连接请求accept；2)客户端有报文到达recv，可以读；3)客户端连接已断开；
-    //       4)可以向客户端发送报文send，可以写。
-    // 可读事件  可写事件
-    // select() 等待事件的发生(监视哪些socket发生了事件)。
-
     fd_set tmpfds=readfds;
     struct timeval timeout;    timeout.tv_sec=10; timeout.tv_usec=0;
     int infds=select(maxfd+1,&tmpfds,NULL,NULL,&timeout);
+    // <0失败；==0超时；>0有事件发生 
 
     // 返回失败。
     if (infds < 0)
@@ -51,7 +68,7 @@ int main(int argc,char *argv[])
     }
 
     // 如果infds>0，表示有事件发生的socket的数量。
-    for (int eventfd=0;eventfd<=maxfd;eventfd++)
+    for (int eventfd=0;eventfd<=maxfd;eventfd++)   // for循环查找是哪个事件
     {
       if (FD_ISSET(eventfd,&tmpfds)<=0) continue;   // 如果没有事件，continue
 
@@ -72,7 +89,6 @@ int main(int argc,char *argv[])
       else
       {
         // 如果是客户端连接的socke有事件，表示有报文发过来或者连接已断开。
-
         char buffer[1024]; // 存放从客户端读取的数据。
         memset(buffer,0,sizeof(buffer));
         if (recv(eventfd,buffer,sizeof(buffer),0)<=0)
@@ -102,7 +118,7 @@ int main(int argc,char *argv[])
           fd_set tmpfds;
           FD_ZERO(&tmpfds);
           FD_SET(eventfd,&tmpfds);
-          if (select(eventfd+1,NULL,&tmpfds,NULL,NULL)<=0)
+          if (select(eventfd+1,NULL,&tmpfds,NULL,NULL)<=0)  // select会阻塞直到可以发送，这段代码无意义，直接send
             perror("select() failed");
           else
             send(eventfd,buffer,strlen(buffer),0);
@@ -134,6 +150,8 @@ int initserver(int port)
   { perror("listen() failed"); close(sock); return -1; }
   return sock;
 }
-
-
 ```
+
+# poll
+- poll和select本质上没有区别，弃用了bitmap，采用数组表示法。
+- 
