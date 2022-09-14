@@ -2,6 +2,11 @@
 - poll模型：可以管理更多的客户端连接，但是连接越多，性能线性下降。
 - epoll：只要内存够，管理连接数没有上限，性能不会下降。
 
+
+如果tcp缓冲区没有满，那么socket连接是可写的。
+tcp发送缓冲区2.5M，接收缓冲区1M。
+在高并发和流媒体传输场景中，缓冲区有填满的可能。
+
 ## select
 ```cpp
 // 初始化服务端的监听端口。
@@ -14,7 +19,6 @@ int main(int argc,char *argv[])
   // 初始化服务端用于监听的socket。
   int listensock = initserver(atoi(argv[1]));
   printf("listensock=%d\n",listensock);
-
   if (listensock < 0) { printf("initserver() failed.\n"); return -1; }
 
   fd_set readfds;        // 读事件socket的集合，包括监听socket和客户端连接上来的socket。
