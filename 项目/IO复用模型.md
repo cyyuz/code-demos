@@ -161,6 +161,97 @@ int initserver(int port)
 # poll
 - poll和select本质上没有区别，弃用了bitmap，采用数组表示法。
 
+```cpp
+struct pollfd {
+    int   fd;         /* file descriptor */
+    short events;     /* requested events */
+    short revents;    /* returned events */
+};
+```
+
+```cpp
+// 初始化服务端的监听端口。
+int initserver(int port);
+
+int main(int argc,char *argv[])
+{
+    if (argc != 2) { printf("usage: ./tcppoll port\n"); return -1; }
+
+    // 初始化服务端用于监听的socket。
+    int listensock = initserver(atoi(argv[1]));
+    printf("listensock=%d\n",listensock);
+    if (listensock < 0) { printf("initserver() failed.\n"); return -1; }
+
+    struct pollfd fds[1024]; //fds代替了位图
+    for(int i=0;i<1024;i++)  fds[i].fd = -1; // 初始化数组
+
+    fds[listensock].fd = listensock;
+    fds[listensock].events = POLLIN; // events存放事件 POLLIN / POLLOUT
+
+    int maxfd = listensock;    // 记录最大值
+    while(true)
+    {
+        // 调用poll监视有事件发生的socket
+        int infds = poll(fds,maxfd+1,5000);  // 单位微妙
+        // 超时事件填0会立即返回，填-1没有事件会一直等待，
+
+        if(infds < 0) { perror("poll() failed."); break; }  //返回失败
+
+        if(infds == 0) {printf("poll() timeout.\n"); continue; }// 超时
+
+        // infds>0,有事件发生的socket数量 
+        for(int eventfd=0;eventfd<=maxfd;eventfd++)
+        {
+            if(fds[eventfd].fd < 0) continue;  // 判断fd
+
+            // 如果有事件 判断是什么事件
+            if((fds[eventfd].revents&POLLIN) == 0) continue; // 没事时间continue
+            fds[eventfd].revents = 0; // 清空revents
+
+            if(eventfd == listensock) // 判断是不是监听socket
+            {
+                struct sockaddr_in client;
+                socklen_t len = sizeof(client);
+                int clientsock = accept(listensock,(struct sockaddr*)&client,&len);
+                if(clientsock < 0) {perror("accept"); continue;}
+                printf("accept client(socket=%d)\n",clientsock);
+                // 把客户端socket加入可读集合
+                fds[clientsock].fd = clientsock;
+                fds[clientsock].events = POLLIN;
+                fds[clientsock].revents = 0;
+                if(maxfd<clientsock) maxfd = clientsock;  // 更新maxfd
+            }
+            else
+            {
+                // 客户端socket有事件，表示有报文发过来或断开连接
+                char buffer[1024];
+                memset(buffer,0,sizeof(buffer));
+                if(recv(eventfd,buffer,sizeof(buffer),0) <= 0) // 客户端已断开
+                {
+                    printf("client(eventfd=%d) disconnect.\n",eventfd);
+                    close(eventfd);   // 关闭socket
+                    fds[eventfd].fd = -1; // 从集合删除socket
+                    // 如果删除的是最后一个socket，重新计算maxfd的值
+                    if(eventfd == maxfd)
+                    {
+                        for(int i = maxfd;i>0;i--)
+                        {
+                            if(fds[i].fd != -1) maxfd = i; break;
+                        }
+                    }
+                }
+                else // recv接收成功，则有报文发过来
+                {
+                    printf("recv(eventfd=%d):%s\n",eventfd,buffer);
+                    // 原封不动发回去
+                    send(eventfd,buffer,strlen(buffer),0);
+                }
+            }
+        }
+    }
+    return 0;
+}    
+```
 
 
 
