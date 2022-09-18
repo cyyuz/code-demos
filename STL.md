@@ -1,5 +1,4 @@
-# 2 STL
-## 2.1 vector
+# 1 vector
 
 - 创建
 
@@ -74,19 +73,19 @@ vector是一个模板，底层实现用的是三个指针，然后利用这三�
 该接口的操作一般是从pos后位置开始,所有数据前挪一单位，但是在挪之前,需要检查是否还存在数据；
 官方文档定义其返回值为删除数据的下一位置。
 
-## 2.2 array
+# 2 array
 
 
-## 2.3 list
+# 3 list
 
 
-## 2.4 deque 双端队列
+# 4 deque 双端队列
 双端队列：
 
 当需要向序列两端频繁的添加或删除元素时，应首选 deque 容器。
 
 
-## 2.5 stack 栈
+# 5 stack 栈
 栈：仅在表尾插入和删除的线性表，**先进后出**。
 
 开口端称为栈顶。
@@ -117,7 +116,8 @@ std::stack<int,std::list<int>> my_stack (values);
 |swap(stack<T> & other_stack) | 	 将两个stack的元素互换，进行互换的2个stack存储的元素类型及基础容器类型都必须相同。|
 
 
-## 2.6 queue 队列
+# 6 queue 队列
+	
 队列：先进先出
 
 从最低端加入元素，从最顶端取得元素，不允许有遍历行为。
@@ -134,8 +134,7 @@ std::stack<int,std::list<int>> my_stack (values);
 |pop()		|删除 queue 中的第一个元素。|
 |swap(queue<T> &other_queue)	|将两个queue容器适配器中的元素进行互换，进行互换的2个queue中存储的元素类型以及底层采用的基础容器类型必须相同。|
 
-
-## 2.7 set集合
+# 7 set集合
 
 - **创建**
 
@@ -180,7 +179,7 @@ emplace_hint()	在本质上和 emplace() 在 set 容器中构造新元素的方�
 ```
 
 
-## 2.8 map映射
+# 8 map映射
 | 无序容器  |  功能|
 |------------|-|
 | unordered_map      | 存储键值对 <key, value> 类型的元素，其中各个键值对键的值不允许重复，且该容器中存储的键值对是无序的。|
