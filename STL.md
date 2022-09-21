@@ -139,7 +139,7 @@ std::stack<int,std::list<int>> my_stack (values);
 |emplace()	|在尾部直接添加一个元素。|
 |push(T&& obj)	|以移动的方式在queue的尾部添加元素。这是通过调用底层容器的具有右值引用参数的成员函数push_back()来完成的。|
 |pop()		|删除 queue 中的第一个元素。|
-|swap(queue<T> &other_queue)	|将两个queue容器适配器中的元素进行互换，进行互换的2个queue中存储的元素类型以及底层采用的基础容器类型必须相同。|
+|swap()	|将两个queue容器适配器中的元素进行互换，进行互换的2个queue中存储的元素类型以及底层采用的基础容器类型必须相同。|
 
 # 7 set集合
 
@@ -236,3 +236,7 @@ rehash(n)	将当前容器底层使用桶的数量设置为 n。
 reserve()	将存储桶的数量（也就是 bucket_count() 方法的返回值）设置为至少容纳count个元（不超过最大负载因子）所需的数量，并重新整理容器。
 hash_function()	返回当前容器使用的哈希函数对象。
 ```
+
+# 9 hash
+
+http://c.biancheng.net/view/3437.html
