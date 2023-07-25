@@ -116,7 +116,9 @@ ECDH（Elliptic Curve Diffie-Hellman）是一种密钥交换算法，用于生�
 
    <center>$K_{data}=sk_{provider}·pk_{TEE}$</center>
                                                                  
-   $$K_{data}=sk_{provider}·pk_{TEE}$$
+   $$
+   K_{data}=sk_{provider}·pk_{TEE}
+   $$
 
    $sk_{provider}$：数据提供方的私钥，$pk_{TEE}$：计算方的公钥
 
