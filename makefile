@@ -9,4 +9,4 @@ test1:test1.cpp test1.cpp
 	g++ -o test1 -g test1.cpp
 
 clean:
-	rm -f test test1 
+	rm -f test test1  
