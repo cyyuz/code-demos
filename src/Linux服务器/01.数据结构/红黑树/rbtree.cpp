@@ -292,7 +292,6 @@ rbtree_node* rbtree_delete(rbtree* T, rbtree_node* z) {
 }
 
 rbtree_node* rbtree_search(rbtree* T, KEY_TYPE key) {
-
     rbtree_node* node = T->root;
     while (node != T->nil) {
         if (key < node->key) {
@@ -307,7 +306,6 @@ rbtree_node* rbtree_search(rbtree* T, KEY_TYPE key) {
     }
     return T->nil;
 }
-
 
 void rbtree_traversal(rbtree* T, rbtree_node* node) {
     if (node != T->nil) {
