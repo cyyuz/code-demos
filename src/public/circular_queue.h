@@ -5,6 +5,8 @@
 #ifndef _CIRCULAR_QUEUE_H
 #define _CIRCULAR_QUEUE_H
 
+#include <iostream>
+
 template <class TT, int MaxLength>
 class circular_queue
 {
@@ -39,7 +41,7 @@ public:
     {
         if (full() == true)
         {
-            cout << "循环队列已满，入队失败。\n"; return false;
+            std::cout << "循环队列已满，入队失败。\n"; return false;
         }
 
         // 先移动队尾指针，然后再拷贝数据。
@@ -95,8 +97,8 @@ public:
     {
         for (int ii = 0; ii < size(); ii++)
         {
-            cout << "m_data[" << (m_head+ii)%MaxLength << "],value=" \
-                 << m_data[(m_head+ii)%MaxLength] << endl;
+            std::cout << "m_data[" << (m_head+ii)%MaxLength << "],value=" \
+                 << m_data[(m_head+ii)%MaxLength] << std::endl;
         }
     }
 };
