@@ -1,3 +1,4 @@
+#include "public.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -5,7 +6,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
-#include "public.h"
 
 struct person
 {
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
 
     //
     idc::csemp mutex;
-    if(mutex.init(0x5005) == false){
+    if (mutex.init(0x5005) == false) {
         std::cout << "mutex.init(0x5005) failed." << std::endl;
     }
 
