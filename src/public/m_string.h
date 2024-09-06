@@ -31,38 +31,6 @@ public:
         return true;
     }
 
-    /**
-     * @brief Convert a string to lowercase.
-     *
-     * This function converts all uppercase characters in a string to lowercase.
-     *
-     * @param str The string to convert.
-     * @return The converted string.
-     */
-    inline static std::string to_lower(const std::string& str) {
-        std::string result = "";
-        for (auto& ch : result) {
-            if ((ch >= 'A') && (ch <= 'Z')) ch = ch + 32;
-        }
-        return result;
-    }
-
-    /**
-     * @brief Convert a string to uppercase.
-     *
-     * This function converts all lowercase characters in a string to uppercase.
-     *
-     * @param str The string to convert.
-     * @return The converted string.
-     */
-    inline static std::string to_upper(const std::string& str) {
-        std::string result = "";
-        for (auto& ch : result) {
-            if ((ch >= 'a') && (ch <= 'z')) ch = ch - 32;
-        }
-        return result;
-    }
-
 private:
     inline static bool m_stoi(const std::string str, int& num) {
         try {

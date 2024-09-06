@@ -5,7 +5,7 @@
 #ifndef __PUBLIC_HH
 #define __PUBLIC_HH 1
 
-#include "cmpublic.h"    // C/C++、Linux编程常用的头文件，新的头文件请在_cmpublic.h中添加。
+#include "common.h"    // C/C++、Linux编程常用的头文件，新的头文件请在_cmpublic.h中添加。
 
 using namespace std;
 
