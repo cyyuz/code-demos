@@ -1,5 +1,3 @@
-INCLUDE = -Isrc/public/
-
 all:rbtree
 
 rbtree:rbtree.cpp
