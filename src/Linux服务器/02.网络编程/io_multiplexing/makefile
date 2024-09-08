@@ -1,26 +1,18 @@
 INCLUDE = -I../../../public/
+LDLIBS_server2 = -lpthread
 
-all:socket_server1 socket_server2 socket_client select poll epoll reactor
-socket_server1:socket_server1.cpp
-	g++ -o socket_server1 -g socket_server1.cpp $(INCLUDE)
+# List of targets
+TARGETS = socket_server1 socket_server2 socket_client select poll epoll reactor1 mul_port_client_epoll
 
-socket_server2:socket_server2.cpp
-	g++ -o socket_server2 -g socket_server2.cpp $(INCLUDE) -lpthread
+all: $(TARGETS)
 
-socket_client:socket_client.cpp
-	g++ -o socket_client -g socket_client.cpp $(INCLUDE)
+# Pattern rule for compiling C++ files
+%: %.cpp
+	g++ -o $@ -g $< $(INCLUDE) $(LDLIBS)
 
-select:select.cpp
-	g++ -o select -g select.cpp $(INCLUDE)
-
-poll:poll.cpp
-	g++ -o poll -g poll.cpp $(INCLUDE)
-
-epoll:epoll.cpp
-	g++ -o epoll -g epoll.cpp $(INCLUDE)
-
-reactor:reactor.cpp
-	g++ -o reactor -g reactor.cpp $(INCLUDE)
+# Specific rule for socket_server2
+socket_server2: socket_server2.cpp
+	g++ -o $@ -g $< $(INCLUDE) $(LDLIBS_server2)
 
 clean:
-	rm -f socket_server1 socket_server2 socket_client select poll epoll reactor
+	rm -f $(TARGETS)

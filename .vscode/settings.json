@@ -49,7 +49,8 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "epoll.h": "c"
     },
     "Codegeex.CompletionDelay": 3
 }
