@@ -1,10 +1,10 @@
 #include "common.h"
 #include <fcntl.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 
-const int BUFFER_LEN = 1024;
+const int BUFFER_LEN = 5;
 const int POLL_SIZE = 1024;
 
 void* client_thread(void* arg) {
@@ -47,50 +47,42 @@ int main() {
     fds[listen_fd].fd = listen_fd;
     fds[listen_fd].events = POLLIN;
 
-    int epfd = epoll_create(1);
+    int                epfd = epoll_create(1);
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = listen_fd;
 
     epoll_ctl(epfd, EPOLL_CTL_ADD, listen_fd, &ev);
 
+    struct epoll_event events[1024] = {0};
 
-    int maxfd = listen_fd;
     while (1) {
-        // fd_set rset = rfds;  // 临时集合，传出事件
-        int nready = poll(fds, maxfd+1, -1);
-        // 监听事件
-        if (fds[listen_fd].revents & POLLIN) {
-            struct sockaddr_in client_addr;
-            socklen_t          len = sizeof(client_addr);
-            int client_fd = accept(listen_fd, (struct sockaddr*)&server_addr, &len);
-            printf("accept:%d\n", client_fd);
-            fds[client_fd].fd = client_fd;
-            fds[client_fd].events = POLLIN;
-            if (maxfd < client_fd) maxfd = client_fd;
-            if (--nready == 0) continue;
-        }
-        // 读写事件
-        for (int eventfd = listen_fd + 1; eventfd <= maxfd; eventfd++) {
-            if (fds[eventfd].revents & POLLIN) {
+        int nready = epoll_wait(epfd, events, 1024, -1);
+
+        if (nready < 0) continue;
+        for (int i = 0; i < nready; i++) {
+            int connect_fd = events[i].data.fd;
+            // 监听事件
+            if (listen_fd == connect_fd) {
+                struct sockaddr_in client_addr;
+                socklen_t          len = sizeof(client_addr);
+                int                client_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &len);
+                if (client_fd <= 0) continue;
+                printf("accept:%d\n", client_fd);
+                ev.events = EPOLLIN | EPOLLET;
+                ev.data.fd = client_fd;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, client_fd, &ev);
+            }
+            else if (events[i].events & EPOLLIN) {
                 char buffer[BUFFER_LEN] = {0};
-                int  ret = recv(eventfd, buffer, BUFFER_LEN, 0);
-                if (ret == 0) {
-                    fds[eventfd].fd = -1;
-                    fds[eventfd].events = 0;
-                    printf("client(eventfd=%d) disconnect.\n", eventfd);
-                    close(eventfd);           // 关闭socket
-                    
-                    // 如果删除的是最后一个socket，重新计算maxfd的值
-                    if (eventfd == maxfd) {
-                        for (int i = maxfd; i > 0; i--) {
-                            if (fds[i].fd != -1) maxfd = i;
-                            break;
-                        }
-                    }
+                int  ret = recv(connect_fd, buffer, BUFFER_LEN, 0);
+                if (ret == 0) {   // 连接断开
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, connect_fd, NULL);
+                    printf("client(connect_fd=%d) disconnect.\n", connect_fd);
+                    close(connect_fd);   // 关闭socket
                 }
-                printf("eventfd=%d, buffer=%s\n", eventfd, buffer);
-                send(eventfd, buffer, ret, 0);
+                printf("connect_fd=%d, buffer=%s\n", connect_fd, buffer);
+                send(connect_fd, buffer, ret, 0);
             }
         }
     }

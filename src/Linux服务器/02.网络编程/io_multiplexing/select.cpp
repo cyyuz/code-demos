@@ -5,21 +5,6 @@
 
 const int BUFFER_LEN = 1024;
 
-void* client_thread(void* arg) {
-    int client_fd = *(int*)arg;
-    while (1) {
-        char buffer[BUFFER_LEN] = {0};
-        int  ret = recv(client_fd, buffer, BUFFER_LEN, 0);
-        if (ret == 0) {
-            close(client_fd);
-            break;
-        }
-        printf("ret=%d, buffer=%s\n", ret, buffer);
-        send(client_fd, buffer, ret, 0);
-    }
-    return NULL;
-}
-
 int main() {
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -55,7 +40,7 @@ int main() {
         if (FD_ISSET(listen_fd, &rset)) {
             struct sockaddr_in client_addr;
             socklen_t          len = sizeof(client_addr);
-            client_fd = accept(listen_fd, (struct sockaddr*)&server_addr, &len);
+            client_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &len);
             printf("accept:%d\n", client_fd);
             FD_SET(client_fd, &rfds);
             if (maxfd < client_fd) maxfd = client_fd;

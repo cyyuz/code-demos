@@ -1,7 +1,6 @@
 INCLUDE = -I../../../public/
 
-all:socket_server1 socket_server2 socket_client select poll
-
+all:socket_server1 socket_server2 socket_client select poll epoll reactor
 socket_server1:socket_server1.cpp
 	g++ -o socket_server1 -g socket_server1.cpp $(INCLUDE)
 
@@ -17,5 +16,11 @@ select:select.cpp
 poll:poll.cpp
 	g++ -o poll -g poll.cpp $(INCLUDE)
 
+epoll:epoll.cpp
+	g++ -o epoll -g epoll.cpp $(INCLUDE)
+
+reactor:reactor.cpp
+	g++ -o reactor -g reactor.cpp $(INCLUDE)
+
 clean:
-	rm -f socket_server1 socket_server2 socket_client select poll
+	rm -f socket_server1 socket_server2 socket_client select poll epoll reactor

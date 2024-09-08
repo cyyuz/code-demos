@@ -50,5 +50,6 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "Codegeex.CompletionDelay": 3
 }
