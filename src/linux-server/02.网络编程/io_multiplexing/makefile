@@ -2,7 +2,7 @@ INCLUDE = -I../../../public/
 LDLIBS_server2 = -lpthread
 
 # List of targets
-TARGETS = socket_server socket_server_thread socket_client select poll epoll reactor1 reactor2 mul_port_client_epoll
+TARGETS = socket_server socket_server_thread socket_client select poll epoll reactor_single_thread reactor2 mul_port_client_epoll
 
 all: $(TARGETS)
 
