@@ -38,8 +38,6 @@ struct reactor_t
     connblock_t* block_header;
 };
 
-52:26
-
 int new_block(reactor_t* reactor) {
     if (!reactor) return -1;
     connblock_t* block = reactor->block_header;
@@ -69,6 +67,7 @@ connect_t* connect_idx(reactor_t* reactor, int fd) {
     connblock_t* block = reactor->block_header;
     while (i < block_idx) {
         block = block->next;
+        i++;   // error
     }
     return &block->block[fd % BLOCK_LENGTH];
 }
@@ -156,7 +155,9 @@ int recv_cb(int fd, int event, void* arg) {
     // printf("connect_fd=%d, buffer=%s\n", fd, conn->rbuffer);
 
     memcpy(conn->wbuffer, conn->rbuffer, conn->rc);
+    memset(conn->rbuffer, 0, BUFFER_LENGTH);
     conn->wc = conn->rc;
+    conn->rc = 0;
 #if 1
     conn->cb = send_cb;
 
