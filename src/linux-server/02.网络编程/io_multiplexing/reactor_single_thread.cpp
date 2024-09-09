@@ -65,9 +65,8 @@ connect_t* connect_idx(reactor_t* reactor, int fd) {
 
     int          i = 0;
     connblock_t* block = reactor->block_header;
-    while (i < block_idx) {
+    while (i++ < block_idx) {
         block = block->next;
-        i++;   // error
     }
     return &block->block[fd % BLOCK_LENGTH];
 }
@@ -152,12 +151,10 @@ int recv_cb(int fd, int event, void* arg) {
         return -1;
     }
     conn->rc += ret;
-    // printf("connect_fd=%d, buffer=%s\n", fd, conn->rbuffer);
-
     memcpy(conn->wbuffer, conn->rbuffer, conn->rc);
-    memset(conn->rbuffer, 0, BUFFER_LENGTH);
+    // memset(conn->rbuffer, 0, BUFFER_LENGTH);
     conn->wc = conn->rc;
-    conn->rc = 0;
+    // conn->rc = 0;
 #if 1
     conn->cb = send_cb;
 
@@ -248,3 +245,5 @@ int main(int argc, char* argv[]) {
         }
     }
 }
+
+// 5:30

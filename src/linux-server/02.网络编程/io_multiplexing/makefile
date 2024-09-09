@@ -10,8 +10,11 @@ all: $(TARGETS)
 %: %.cpp
 	g++ -o $@ -g $< $(INCLUDE) $(LDLIBS)
 
-# Specific rule for socket_server_thread
+# Specific rule
 socket_server_thread: socket_server_thread.cpp
+	g++ -o $@ -g $< $(INCLUDE) $(LDLIBS_server2)
+
+server_mulport_epoll: server_mulport_epoll.cpp
 	g++ -o $@ -g $< $(INCLUDE) $(LDLIBS_server2)
 
 clean:
