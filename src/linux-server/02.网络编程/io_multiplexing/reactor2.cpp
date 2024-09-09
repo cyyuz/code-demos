@@ -10,7 +10,7 @@
 
 const int BUFFER_LENGTH = 1024;
 const int EVENT_LENGTH = 1024;
-const int BLOCK_LENGTH = 1024;
+const int BLOBK_LENGTH = 1024;
 
 typedef int (*CALLBACK)(int fd, int events, void* arg);
 
@@ -34,44 +34,8 @@ struct connblock_t
 struct reactor_t
 {
     int          epfd;
-    int          block_count;
     connblock_t* block_header;
 };
-
-52:26
-
-int new_block(reactor_t* reactor) {
-    if (!reactor) return -1;
-    connblock_t* block = reactor->block_header;
-    while (block->next != NULL) {
-        block = block->next;
-    }
-    connblock_t* new_block = (connblock_t*)malloc(sizeof(connblock_t) + BLOCK_LENGTH * sizeof(connect_t));
-    if (new_block == NULL) return -1;
-    new_block->block = (connect_t*)(new_block + 1);
-    new_block->next = NULL;
-    block->next = new_block;
-
-    reactor->block_count++;
-    return 0;
-}
-
-connect_t* connect_idx(reactor_t* reactor, int fd) {
-    if (!reactor) return NULL;
-
-    int block_idx = fd / BLOCK_LENGTH;
-
-    while (block_idx >= reactor->block_count) {
-        new_block(reactor);
-    }
-
-    int          i = 0;
-    connblock_t* block = reactor->block_header;
-    while (i < block_idx) {
-        block = block->next;
-    }
-    return &block->block[fd % BLOCK_LENGTH];
-}
 
 int init_reactor(reactor_t* reactor) {
     if (!reactor) return -1;
@@ -81,12 +45,11 @@ int init_reactor(reactor_t* reactor) {
     reactor->block_header->blobk = (connect_t*)calloc(BLOBK_LENGTH, sizeof(connblock_t));
     if (reactor->block_header->blobk == NULL) return -1;
 #else
-    reactor->block_header = (connblock_t*)malloc(sizeof(connblock_t) + BLOCK_LENGTH * sizeof(connect_t));
+    reactor->block_header = (connblock_t*)malloc(sizeof(connblock_t) + BLOBK_LENGTH * sizeof(connect_t));
     if (reactor->block_header == NULL) return -1;
     reactor->block_header->block = (connect_t*)(reactor->block_header + 1);
 #endif
-    reactor->block_count = 1;
-    reactor->block_header->next = NULL;
+
     reactor->epfd = epoll_create(1);
     return 0;
 }
@@ -122,9 +85,9 @@ int init_server(short port) {
 }
 
 int send_cb(int fd, int event, void* arg) {
-    // printf("send\n");
+    printf("send\n");
     reactor_t* reactor = (reactor_t*)arg;
-    connect_t* conn = connect_idx(reactor, fd);
+    connect_t* conn = &reactor->block_header->block[fd];
 
     int ret = send(fd, conn->wbuffer, conn->wc, 0);
 
@@ -132,14 +95,14 @@ int send_cb(int fd, int event, void* arg) {
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
-    epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
+    epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, fd, &ev);
 
     return 0;
 }
 
 int recv_cb(int fd, int event, void* arg) {
     reactor_t* reactor = (reactor_t*)arg;
-    connect_t* conn = connect_idx(reactor, fd);
+    connect_t* conn = &reactor->block_header->block[fd];
 
     int ret = recv(fd, conn->rbuffer + conn->rc, conn->count, 0);
     if (ret < 0) {}
@@ -150,10 +113,9 @@ int recv_cb(int fd, int event, void* arg) {
         epoll_ctl(reactor->epfd, EPOLL_CTL_DEL, fd, NULL);
         printf("client(connect_fd=%d) disconnect.\n", fd);
         close(fd);
-        return -1;
     }
     conn->rc += ret;
-    // printf("connect_fd=%d, buffer=%s\n", fd, conn->rbuffer);
+    printf("connect_fd=%d, buffer=%s\n", fd, conn->rbuffer);
 
     memcpy(conn->wbuffer, conn->rbuffer, conn->rc);
     conn->wc = conn->rc;
@@ -163,13 +125,13 @@ int recv_cb(int fd, int event, void* arg) {
     struct epoll_event ev;
     ev.events = EPOLLOUT;
     ev.data.fd = fd;
-    epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
+    epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, fd, &ev);
 #else
     conn->count = 20;
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
-    epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
+    epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, fd, &ev);
 #endif
 
     return 0;
@@ -186,10 +148,10 @@ int accept_cb(int fd, int events, void* arg) {
     printf("accept:%d\n", client_fd);
 
     reactor_t* reactor = (reactor_t*)arg;
-    connect_t* conn = connect_idx(reactor, client_fd);
+    connect_t* conn = &reactor->block_header->block[client_fd];
     conn->fd = client_fd;
     conn->cb = recv_cb;
-    conn->count = BUFFER_LENGTH;
+    conn->count = 2;
 
     struct epoll_event ev;
     ev.events = EPOLLIN;
@@ -237,7 +199,7 @@ int main(int argc, char* argv[]) {
         int nready = epoll_wait(reactor.epfd, events, 1024, -1);
         for (int i = 0; i < nready; i++) {
             int        connect_fd = events[i].data.fd;
-            connect_t* conn = connect_idx(&reactor, connect_fd);
+            connect_t* conn = &reactor.block_header->block[connect_fd];
             if (events[i].events & EPOLLIN) {
                 conn->cb(connect_fd, events[i].events, &reactor);
             }
