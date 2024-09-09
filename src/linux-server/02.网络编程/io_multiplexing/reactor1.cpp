@@ -18,7 +18,7 @@ struct connect_t
 {
     int      fd;
     CALLBACK cb;
-    int count;
+    int      count;
     char     rbuffer[BUFFER_LENGTH];
     int      rc;
     char     wbuffer[BUFFER_LENGTH];
@@ -84,28 +84,27 @@ int init_server(short port) {
     return listen_fd;
 }
 
-int send_cb(int fd, int event, void* arg){
+int send_cb(int fd, int event, void* arg) {
     printf("send\n");
-    reactor_t *reactor = (reactor_t *)arg;
-    connect_t *conn = &reactor->block_header->block[fd];
+    reactor_t* reactor = (reactor_t*)arg;
+    connect_t* conn = &reactor->block_header->block[fd];
 
-    int  ret = send(fd, conn->wbuffer, conn->wc, 0);
+    int ret = send(fd, conn->wbuffer, conn->wc, 0);
 
-    conn->cb = recv_cb; 
+    conn->cb = recv_cb;
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, fd, &ev);
 }
 
-int recv_cb(int fd, int event, void* arg) { 
-    reactor_t *reactor = (reactor_t *)arg;
-    connect_t *conn = &reactor->block_header->block[fd];
+int recv_cb(int fd, int event, void* arg) {
+    reactor_t* reactor = (reactor_t*)arg;
+    connect_t* conn = &reactor->block_header->block[fd];
 
-    int  ret = recv(fd, conn->rbuffer + conn->rc, conn->count, 0);
-    if(ret <0){
-
-    }else if (ret == 0) {   // 连接断开
+    int ret = recv(fd, conn->rbuffer + conn->rc, conn->count, 0);
+    if (ret < 0) {}
+    else if (ret == 0) {   // 连接断开
         conn->fd = -1;
         conn->rc = 0;
         conn->wc = 0;
@@ -156,8 +155,8 @@ int accept_cb(int fd, int events, void* arg) {
     epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, client_fd, &ev);
 }
 
-int set_listener(reactor_t*reactor, int listen_fd, CALLBACK cb){
-    if(!reactor || !reactor->block_header) return -1;
+int set_listener(reactor_t* reactor, int listen_fd, CALLBACK cb) {
+    if (!reactor || !reactor->block_header) return -1;
     reactor->block_header->block[listen_fd].fd = listen_fd;
     reactor->block_header->block[listen_fd].cb = cb;
 
@@ -165,7 +164,7 @@ int set_listener(reactor_t*reactor, int listen_fd, CALLBACK cb){
     ev.events = EPOLLIN;
     ev.data.fd = listen_fd;
     epoll_ctl(reactor->epfd, EPOLL_CTL_ADD, listen_fd, &ev);
-} 
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -175,7 +174,7 @@ int main(int argc, char* argv[]) {
 
     int port = atoi(argv[1]);
     int listen_fd = init_server(port);
-    if(listen_fd <0){
+    if (listen_fd < 0) {
         printf("init server failed.\n");
     }
 
@@ -192,8 +191,8 @@ int main(int argc, char* argv[]) {
     while (1) {
         int nready = epoll_wait(reactor.epfd, events, 1024, -1);
         for (int i = 0; i < nready; i++) {
-            int connect_fd = events[i].data.fd;
-            connect_t *conn = &reactor.block_header->block[connect_fd];
+            int        connect_fd = events[i].data.fd;
+            connect_t* conn = &reactor.block_header->block[connect_fd];
             if (events[i].events & EPOLLIN) {
                 conn->cb(connect_fd, events[i].events, &reactor);
             }
