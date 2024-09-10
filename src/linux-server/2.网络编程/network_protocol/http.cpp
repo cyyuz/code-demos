@@ -147,6 +147,17 @@ int recv_cb(int fd, int event, void* arg) {
     }
     else {
         conn->rc += ret;
+
+// GET / HTTP/1.1
+// Host: 47.92.88.51:5005
+// User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+// Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+// Accept-Encoding: gzip, deflate
+// Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8
+// Cache-Control: max-age=0
+// Upgrade-Insecure-Requests: 1
+
+        printf("\nrecv:\n\n%s\n", conn->rbuffer);
         memcpy(conn->wbuffer, conn->rbuffer, ret);
         conn->wc = conn->rc;
 
@@ -209,7 +220,7 @@ int main(int argc, char* argv[]) {
 
     int port = atoi(argv[1]);
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1; i++) {
         int listen_fd = init_server(port + i);
         if (listen_fd < 0) {
             printf("init server failed.\n");
