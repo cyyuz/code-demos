@@ -90,7 +90,54 @@ void destroy_reactor(reactor_t* reactor) {
     close(reactor->epfd);
 }
 
-int recv_cb(int fd, int event, void* arg);
+int read_line(char* allbuf, int idx, char* linebuff) {
+    int len = strlen(allbuf);
+    for (; idx < len; idx++) {
+        if (allbuf[idx] == '\r' && allbuf[idx + 1] == '\n') {
+            return idx + 2;
+        }
+        else {
+            *(linebuff++) = allbuf[idx];
+        }
+    }
+    return -1;
+}
+
+int http_response(connect_t* conn) {
+    sprintf(conn->wbuffer, "HTTP/1.1 200 OK ");
+    int len = sprintf(conn->wbuffer,
+                      "HTTP/1.1 200 OK\r\n"
+                      "Accept-Ranges: bytes\r\n"
+                      "Content-Length: 78\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n"
+                      "<html><head><title>0voice.king</title></head><body><h1>King</h1><body/></html>");
+
+    conn->wc = len;
+}
+
+int http_request(connect_t* conn){
+    printf("\nhttp request:\n\n%s\n", conn->rbuffer);
+    char line_buffer[1024] = {0};
+    int idx = read_line(conn->rbuffer, 0, line_buffer);
+
+    if(strstr(line_buffer, "GET")){
+        int i=0;
+        while(line_buffer[sizeof("GET ") + i] != ' ') i++;
+        line_buffer[sizeof("GET ") + i] = '\0';
+        printf("%s\n",line_buffer + 4);
+    }   
+
+// GET / HTTP/1.1
+// Host: 47.92.88.51:5005
+// User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+// Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+// Accept-Encoding: gzip, deflate
+// Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8
+// Cache-Control: max-age=0
+// Upgrade-Insecure-Requests: 1
+    return 0;
+}
 
 int init_server(short port) {
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -115,9 +162,13 @@ int init_server(short port) {
     return listen_fd;
 }
 
+int recv_cb(int fd, int event, void* arg);
+
 int send_cb(int fd, int event, void* arg) {
     reactor_t* reactor = (reactor_t*)arg;
     connect_t* conn = connect_idx(reactor, fd);
+
+    http_response(conn);
 
     int ret = send(fd, conn->wbuffer, conn->wc, 0);
 
@@ -148,18 +199,11 @@ int recv_cb(int fd, int event, void* arg) {
     else {
         conn->rc += ret;
 
-// GET / HTTP/1.1
-// Host: 47.92.88.51:5005
-// User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
-// Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-// Accept-Encoding: gzip, deflate
-// Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8
-// Cache-Control: max-age=0
-// Upgrade-Insecure-Requests: 1
-
-        printf("\nrecv:\n\n%s\n", conn->rbuffer);
-        memcpy(conn->wbuffer, conn->rbuffer, ret);
+        /* echo
+        memcpy(conn->wbuffer, conn->rbuffer, ret);  // conn->rc
         conn->wc = conn->rc;
+        */
+        http_request(conn);
 
         conn->cb = send_cb;
 
