@@ -120,7 +120,6 @@ int init_server(short port) {
 }
 
 int send_cb(int fd, int event, void* arg) {
-    // printf("send\n");
     reactor_t* reactor = (reactor_t*)arg;
     connect_t* conn = connect_idx(reactor, fd);
 
@@ -150,11 +149,9 @@ int recv_cb(int fd, int event, void* arg) {
         close(fd);
         return -1;
     }
-    conn->rc += ret;
-    memcpy(conn->wbuffer, conn->rbuffer, conn->rc);
-    // memset(conn->rbuffer, 0, BUFFER_LENGTH);
-    conn->wc = conn->rc;
-    // conn->rc = 0;
+    memcpy(conn->wbuffer, conn->rbuffer, ret);
+    memset(conn->rbuffer, 0, BUFFER_LENGTH);
+    conn->wc = ret;
 #if 1
     conn->cb = send_cb;
 
