@@ -116,6 +116,7 @@ int init_server(short port) {
     }
 
     listen(listen_fd, 10);
+    printf("listen port: %d\n", port);
     return listen_fd;
 }
 
@@ -138,7 +139,7 @@ int recv_cb(int fd, int event, void* arg) {
     reactor_t* reactor = (reactor_t*)arg;
     connect_t* conn = connect_idx(reactor, fd);
 
-    int ret = recv(fd, conn->rbuffer + conn->rc, conn->count, 0);
+    int ret = recv(fd, conn->rbuffer, BUFFER_LENGTH, 0);
     if (ret < 0) {}
     else if (ret == 0) {   // 连接断开
         conn->fd = -1;
@@ -149,24 +150,18 @@ int recv_cb(int fd, int event, void* arg) {
         close(fd);
         return -1;
     }
-    memcpy(conn->wbuffer, conn->rbuffer, ret);
-    memset(conn->rbuffer, 0, BUFFER_LENGTH);
-    conn->wc = ret;
-#if 1
-    conn->cb = send_cb;
+    else {
+        conn->rc += ret;
+        memcpy(conn->wbuffer, conn->rbuffer, ret);
+        conn->wc = conn->rc;
 
-    struct epoll_event ev;
-    ev.events = EPOLLOUT;
-    ev.data.fd = fd;
-    epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
-#else
-    conn->count = 20;
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = fd;
-    epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
-#endif
+        conn->cb = send_cb;
 
+        struct epoll_event ev;
+        ev.events = EPOLLOUT;
+        ev.data.fd = fd;
+        epoll_ctl(reactor->epfd, EPOLL_CTL_MOD, fd, &ev);
+    }
     return 0;
 }
 
@@ -212,19 +207,22 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    int port = atoi(argv[1]);
-    int listen_fd = init_server(port);
-    if (listen_fd < 0) {
-        printf("init server failed.\n");
-    }
-
     reactor_t reactor;
     if (init_reactor(&reactor) != 0) {
         printf("reactor init failed.\n");
     }
 
-    if (set_listener(&reactor, listen_fd, accept_cb) < 0) {
-        printf("set listener failed.\n");
+    int port = atoi(argv[1]);
+
+    for (int i = 0; i < 1; i++) {
+        int listen_fd = init_server(port + i);
+        if (listen_fd < 0) {
+            printf("init server failed.\n");
+        }
+
+        if (set_listener(&reactor, listen_fd, accept_cb) < 0) {
+            printf("set listener failed.\n");
+        }
     }
 
     struct epoll_event events[EVENT_LENGTH] = {0};
