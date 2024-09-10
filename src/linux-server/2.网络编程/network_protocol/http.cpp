@@ -73,16 +73,11 @@ connect_t* connect_idx(reactor_t* reactor, int fd) {
 
 int init_reactor(reactor_t* reactor) {
     if (!reactor) return -1;
-#if 0 
-    reactor->block_header = (connblock_t*)malloc(sizeof(connblock_t));
-    if (reactor->block_header == NULL) return -1;
-    reactor->block_header->blobk = (connect_t*)calloc(BLOBK_LENGTH, sizeof(connblock_t));
-    if (reactor->block_header->blobk == NULL) return -1;
-#else
+
     reactor->block_header = (connblock_t*)malloc(sizeof(connblock_t) + BLOCK_LENGTH * sizeof(connect_t));
     if (reactor->block_header == NULL) return -1;
     reactor->block_header->block = (connect_t*)(reactor->block_header + 1);
-#endif
+
     reactor->block_count = 1;
     reactor->block_header->next = NULL;
     reactor->epfd = epoll_create(1);
@@ -214,7 +209,7 @@ int main(int argc, char* argv[]) {
 
     int port = atoi(argv[1]);
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 100; i++) {
         int listen_fd = init_server(port + i);
         if (listen_fd < 0) {
             printf("init server failed.\n");
