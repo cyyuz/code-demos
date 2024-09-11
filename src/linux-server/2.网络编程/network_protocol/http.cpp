@@ -108,12 +108,14 @@ int http_response(connect_t* conn) {
     int len = sprintf(conn->wbuffer,
                       "HTTP/1.1 200 OK\r\n"
                       "Accept-Ranges: bytes\r\n"
-                      "Content-Length: 78\r\n"
+                      "Content-Length: 71\r\n"
                       "Content-Type: text/html\r\n"
                       "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n"
-                      "<html><head><title>0voice.king</title></head><body><h1>King</h1><body/></html>");
+                      "<html><head><title>test</title></head><body><h1>CyYu</h1><body/></html>");
 
     conn->wc = len;
+
+    return 0;
 }
 
 int http_request(connect_t* conn){
