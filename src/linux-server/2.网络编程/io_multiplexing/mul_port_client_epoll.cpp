@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 					send(clientfd, buffer, strlen(buffer), 0);
 				} else if (events[i].events & EPOLLIN) {
 					char rBuffer[MAX_BUFFER] = {0};				
-					ssize_t length = recv(sockfd, rBuffer, MAX_BUFFER, 0);
+					ssize_t length = recv(clientfd, rBuffer, MAX_BUFFER, 0);
 					if (length > 0) {
 						printf(" RecvBuffer:%s\n", rBuffer);
 
