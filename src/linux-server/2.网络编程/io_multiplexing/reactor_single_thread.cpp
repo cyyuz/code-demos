@@ -138,7 +138,7 @@ int recv_cb(int fd, int event, void* arg) {
     reactor_t* reactor = (reactor_t*)arg;
     connect_t* conn = connect_idx(reactor, fd);
 
-    int ret = recv(fd, conn->rbuffer + conn->rc, conn->count, 0);
+    int ret = recv(fd, conn->rbuffer, conn->count, 0);
     if (ret < 0) {}
     else if (ret == 0) {   // 连接断开
         conn->fd = -1;
@@ -149,9 +149,9 @@ int recv_cb(int fd, int event, void* arg) {
         close(fd);
         return -1;
     }
-    memcpy(conn->wbuffer, conn->rbuffer, ret);
-    memset(conn->rbuffer, 0, BUFFER_LENGTH);
-    conn->wc = ret;
+    conn->rc += ret;
+    memcpy(conn->wbuffer, conn->rbuffer, conn->rc);
+    conn->wc = conn->rc;
 #if 1
     conn->cb = send_cb;
 

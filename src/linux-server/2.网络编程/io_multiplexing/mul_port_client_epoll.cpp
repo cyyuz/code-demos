@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
 
 				if (events[i].events & EPOLLOUT) {
 					sprintf(buffer, "data from %d\n", clientfd);
-					send(sockfd, buffer, strlen(buffer), 0);
+					send(clientfd, buffer, strlen(buffer), 0);
 				} else if (events[i].events & EPOLLIN) {
 					char rBuffer[MAX_BUFFER] = {0};				
 					ssize_t length = recv(sockfd, rBuffer, MAX_BUFFER, 0);
