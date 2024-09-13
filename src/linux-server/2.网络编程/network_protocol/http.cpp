@@ -1,28 +1,37 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/sendfile.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 const int BUFFER_LENGTH = 1024;
 const int EVENT_LENGTH = 1024;
 const int BLOCK_LENGTH = 1024;
+const int KEY_MAX_LENGTH = 128;
+const int VALUE_MAX_LENGTH = 512;
+const int MAX_KEY_COUNT = 128;
 
 typedef int (*CALLBACK)(int fd, int events, void* arg);
 
 struct connect_t
 {
-    int      fd;
-    CALLBACK cb;
-    int      count;
-    char     rbuffer[BUFFER_LENGTH];
-    int      rc;
-    char     wbuffer[BUFFER_LENGTH];
-    int      wc;   // 读取的字节数
+    int        fd;
+    CALLBACK   cb;
+    int        count;
+    char       rbuffer[BUFFER_LENGTH];
+    int        rc;
+    char       wbuffer[BUFFER_LENGTH];
+    int        wc;   // 读取的字节数
+    char       resource[BUFFER_LENGTH];
+    bool       enable_sendfile;
+    kvstore_t* kvheader;
 };
 
 struct connblock_t
@@ -37,6 +46,61 @@ struct reactor_t
     int          block_count;
     connblock_t* block_header;
 };
+
+struct kvpair_t
+{
+    char key[KEY_MAX_LENGTH];
+    char value[VALUE_MAX_LENGTH];
+};
+
+struct kvstore_t
+{
+    struct kvpair_t* table;
+    int              max_pairs;   // 最大键值对数量
+    int              num_pairs;   // 当前存储的键值对数量
+};
+
+int init_kvpair(kvstore_t* kvstore) {
+    if (!kvstore) return -1;
+    kvstore->table = (kvpair_t*)calloc(MAX_KEY_COUNT, sizeof(kvpair_t));
+    if (!kvstore->table) return -2;
+
+    kvstore->max_pairs = MAX_KEY_COUNT;
+    kvstore->num_pairs = 0;
+}
+
+int destroy_kvpair(kvstore_t* kvstore) {
+    if (!kvstore) return -1;
+    if (!kvstore->table) {
+        free(kvstore->table);
+    }
+}
+
+int put_kvpair(kvstore_t* kvstore, const char* key, const char* value) {
+    if (!kvstore || !kvstore->table || !key || !value) return -1;
+
+    if (kvstore->num_pairs < kvstore->max_pairs) {
+        // lock
+        int idx = kvstore->num_pairs++;
+        // unlock
+        strncpy(kvstore->table[idx].key, key, KEY_MAX_LENGTH);
+        strncpy(kvstore->table[idx].value, value, VALUE_MAX_LENGTH);
+        // kvstore->num_pairs++;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+char* get_kvpair(kvstore_t* kvstore, const char* key) {
+    for (int i = 0; i < kvstore->num_pairs; i++) {
+        if (strcmp(kvstore->table[i].key, key)) {
+            return kvstore->table[i].value;
+        }
+    }
+    return NULL;
+}
 
 int new_block(reactor_t* reactor) {
     if (!reactor) return -1;
@@ -103,8 +167,10 @@ int read_line(char* allbuf, int idx, char* linebuff) {
     return -1;
 }
 
+#define HTTP_WEB_ROOT "/home/cyyu/code-demos/src/linux-server/2.网络编程/network_protocol"
+
 int http_response(connect_t* conn) {
-    sprintf(conn->wbuffer, "HTTP/1.1 200 OK ");
+#if 0
     int len = sprintf(conn->wbuffer,
                       "HTTP/1.1 200 OK\r\n"
                       "Accept-Ranges: bytes\r\n"
@@ -112,32 +178,99 @@ int http_response(connect_t* conn) {
                       "Content-Type: text/html\r\n"
                       "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n"
                       "<html><head><title>test</title></head><body><h1>CyYu</h1><body/></html>");
+#elif 0
+    printf("resource=%s\n", conn->resource);
 
+    int filefd = open(conn->resource, O_RDONLY);
+    if (filefd == -1) {
+        printf("open failed\n");
+        return -1;
+    }
+    struct stat stat_buf;
+    fstat(filefd, &stat_buf);
+    int len = sprintf(conn->wbuffer,
+                      "HTTP/1.1 200 OK\r\n"
+                      "Accept-Ranges: bytes\r\n"
+                      "Content-Length: %ld\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n",
+                      stat_buf.st_size);
+    len += read(filefd, conn->wbuffer + len, BUFFER_LENGTH - len);
+
+    close(filefd);
+#elif 0
+    int filefd = open(conn->resource, O_RDONLY);
+    if (filefd == -1) {
+        printf("errno=%d: %s\n", errno, strerror(errno));
+        return -1;
+    }
+    struct stat stat_buf;
+    fstat(filefd, &stat_buf);
+    close(filefd);
+    int len = sprintf(conn->wbuffer,
+                      "HTTP/1.1 200 OK\r\n"
+                      "Accept-Ranges: bytes\r\n"
+                      "Content-Length: %ld\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n",
+                      stat_buf.st_size);
+    conn->enable_sendfile = true;
+#elif 1
+    int filefd = open(conn->resource, O_RDONLY);
+    if (filefd == -1) {
+        printf("errno=%d: %s\n", errno, strerror(errno));
+        return -1;
+    }
+    struct stat stat_buf;
+    fstat(filefd, &stat_buf);
+    close(filefd);
+    int len = sprintf(conn->wbuffer,
+                      "HTTP/1.1 200 OK\r\n"
+                      "Accept-Ranges: bytes\r\n"
+                      "Content-Length: %ld\r\n"
+                      "Content-Type: image/jpg\r\n"
+                      "Date: Sat, 06 Aug 2022 13:16:46 GMT\r\n\r\n",
+                      stat_buf.st_size);
+    conn->enable_sendfile = true;
+#endif
     conn->wc = len;
-
     return 0;
 }
 
-int http_request(connect_t* conn){
+int http_request(connect_t* conn) {
     printf("\nhttp request:\n\n%s\n", conn->rbuffer);
     char line_buffer[1024] = {0};
-    int idx = read_line(conn->rbuffer, 0, line_buffer);
+    int  idx = read_line(conn->rbuffer, 0, line_buffer);
 
-    if(strstr(line_buffer, "GET")){
-        int i=0;
-        while(line_buffer[sizeof("GET ") + i] != ' ') i++;
+    if (strstr(line_buffer, "GET")) {
+        int i = 0;
+        while (line_buffer[sizeof("GET ") + i] != ' ') i++;
         line_buffer[sizeof("GET ") + i] = '\0';
-        printf("%s\n",line_buffer + 4);
-    }   
 
-// GET / HTTP/1.1
-// Host: 47.92.88.51:5005
-// User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
-// Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-// Accept-Encoding: gzip, deflate
-// Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8
-// Cache-Control: max-age=0
-// Upgrade-Insecure-Requests: 1
+        sprintf(conn->resource, "%s/%s", HTTP_WEB_ROOT, line_buffer + 4);
+        // printf("%s\n",line_buffer + 4);
+    }
+    else {
+        while (idx != -1) {
+            idx = read_line(conn->rbuffer, idx, line_buffer);
+
+            char* key = line_buffer;
+            int   i = 0;
+            while (key[i++] != ':');
+            key[i] = '\0';
+            char* value = line_buffer + i + 1;
+            put_kvpair(conn->kvheader, key, value);
+        }
+    }
+
+    // GET / HTTP/1.1
+    // Host: 47.92.88.51:5005
+    // User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    // Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+    // Accept-Encoding: gzip, deflate
+    // Accept-Language: zh-CN,zh;q=0.9,zh-TW;q=0.8
+    // Cache-Control: max-age=0
+    // Upgrade-Insecure-Requests: 1
     return 0;
 }
 
@@ -173,6 +306,25 @@ int send_cb(int fd, int event, void* arg) {
     http_response(conn);
 
     int ret = send(fd, conn->wbuffer, conn->wc, 0);
+
+#if 1
+    if (conn->enable_sendfile) {
+        int filefd = open(conn->resource, O_RDONLY);
+        if (filefd == -1) {
+            printf("errno=%d\n", errno);
+            return -1;
+        }
+        struct stat stat_buf;
+        fstat(filefd, &stat_buf);
+
+        int ret = sendfile(fd, filefd, NULL, stat_buf.st_size);   // send body
+        if (ret == -1) {
+            printf("errno=%d\n", errno);
+        }
+        close(filefd);
+        conn->enable_sendfile = false;
+    }
+#endif
 
     conn->cb = recv_cb;
     struct epoll_event ev;
@@ -232,6 +384,8 @@ int accept_cb(int fd, int events, void* arg) {
     conn->fd = client_fd;
     conn->cb = recv_cb;
     conn->count = BUFFER_LENGTH;
+    conn->kvheader = (kvstore_t*)malloc(sizeof(kvstore_t));
+    init_kvpair(conn->kvheader);
 
     struct epoll_event ev;
     ev.events = EPOLLIN;
